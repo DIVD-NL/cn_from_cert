@@ -6,12 +6,18 @@ else
 	port=$2
 fi
 ip=$1
-
+mkdir -p crts
 # Get cert
-openssl s_client -connect $ip:$port 2>/dev/null </dev/null |  sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > $ip:$port.crt
+timeout 2 openssl s_client -connect $ip:$port 2>/dev/null </dev/null |  sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > crts/$ip:$port.crt
 
-# get CN from IP
-CN=$(timeout 2 openssl x509 -noout -subject -in $ip:$port.crt | sed 's#.*\=\s*##')
-DOMAIN=$(./hostname_to_apex.py $CN)
-echo "\"$ip\",\"$CN\",\"$DOMAIN\""
+if [[ -e crts/$ip:$port.crt ]]; then 
+	# get CN from IP
+	CN=$( openssl x509 -noout -subject -in crts/$ip:$port.crt | sed 's#.*\=\s*##')
+	if [[ "$CN" == "" ]]; then 
+		DOMAIN=""
+	else
+		DOMAIN=$(./hostname_to_apex.py $CN)
+	fi
+	echo "\"$ip\",\"$CN\",\"$DOMAIN\""
+fi
 
